@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>Muscle Tracker · analyse avancée</title>
+    <title>Muscle Tracker · Supabase actif</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
@@ -15,6 +15,7 @@
         body { font-family: 'Inter', sans-serif; background: #f4f6fa; }
         .font-poppins { font-family: 'Poppins', sans-serif; }
         .bottom-nav-item.active i, .bottom-nav-item.active span { color: #4f46e5; font-weight: 600; }
+        .error-message { background: #fee2e2; color: #b91c1c; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-3">
@@ -43,44 +44,44 @@
 
     <script>
         (async function() {
-            // ---------- SUPABASE ----------
+            // ========== CONFIG SUPABASE (vos identifiants) ==========
             const SUPABASE_URL = 'https://ylrseemuvxogyopwqrnr.supabase.co';
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlscnNlZW11dnhvZ3lvcHdycW5yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NDA1MzIsImV4cCI6MjA4ODExNjUzMn0.Bc1yhbVNbLGU_bMQBjecXe0Is-WtZMWXALcW-oWYkPA';
-            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true } });
 
-            // ---------- MOYENNES NATIONALES ÉTOFFÉES (valeurs réalistes approx.) ----------
+            // Initialisation Supabase
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: { persistSession: true }
+            });
+
+            // ========== MOYENNES NATIONALES (24 exercices) ==========
             const NATIONAL_AVERAGES = {
-                // === FORCE (1RM estimé en kg) ===
                 squat: { male: 105, female: 62 },
                 bench: { male: 82, female: 42 },
                 deadlift: { male: 135, female: 72 },
                 overhead_press: { male: 52, female: 27 },
                 barbell_row: { male: 73, female: 37 },
-                leg_press: { male: 210, female: 130 },   // machine
+                leg_press: { male: 210, female: 130 },
                 lat_pulldown: { male: 70, female: 38 },
                 seated_cable_row: { male: 65, female: 35 },
-                dumbbell_shoulder_press: { male: 24, female: 12 },  // par haltère
-                bicep_curl: { male: 28, female: 14 },      // barre ou haltère
+                dumbbell_shoulder_press: { male: 24, female: 12 },
+                bicep_curl: { male: 28, female: 14 },
                 tricep_extension: { male: 32, female: 17 },
                 leg_extension: { male: 70, female: 40 },
                 leg_curl: { male: 55, female: 30 },
                 hip_thrust: { male: 140, female: 90 },
-                // === POIDS DE CORPS (répétitions max) ===
-                pull_up: { male: 10, female: 2 },         // tractions strictes
+                pull_up: { male: 10, female: 2 },
                 chin_up: { male: 11, female: 3 },
                 dip: { male: 15, female: 5 },
                 push_up: { male: 35, female: 12 },
                 bench_dip: { male: 20, female: 8 },
-                // === CARDIO (temps en minutes pour distance fixe) ===
-                run_5k: { male: 21.5, female: 25.0 },      // 5 km
+                run_5k: { male: 21.5, female: 25.0 },
                 run_10k: { male: 47.0, female: 54.0 },
-                half_marathon: { male: 105, female: 118 }, // 21.1 km
-                bike_20k: { male: 38, female: 44 },        // 20 km vélo plat
-                swim_1k: { male: 19, female: 21.5 },       // 1000 m nage libre
-                row_2k: { male: 7.2, female: 8.4 }         // 2000 m aviron (minutes)
+                half_marathon: { male: 105, female: 118 },
+                bike_20k: { male: 38, female: 44 },
+                swim_1k: { male: 19, female: 21.5 },
+                row_2k: { male: 7.2, female: 8.4 }
             };
 
-            // Types d'exercices pour adapter le formulaire
             const EXERCISE_CATEGORY = {
                 squat: 'strength', bench: 'strength', deadlift: 'strength', overhead_press: 'strength',
                 barbell_row: 'strength', leg_press: 'strength', lat_pulldown: 'strength',
@@ -93,7 +94,6 @@
                 bike_20k: 'cardio', swim_1k: 'cardio', row_2k: 'cardio'
             };
 
-            // Labels d'exercices pour affichage
             const EXERCISE_LABELS = {
                 squat: 'Squat', bench: 'Développé couché', deadlift: 'Soulevé de terre',
                 overhead_press: 'Développé militaire', barbell_row: 'Rowing barre',
@@ -107,7 +107,7 @@
                 bike_20k: 'Vélo 20 km', swim_1k: 'Natation 1 km', row_2k: 'Rameur 2000 m'
             };
 
-            // ---------- ETAT ----------
+            // ========== ÉTAT GLOBAL ==========
             let state = {
                 user: null,
                 profile: null,
@@ -120,58 +120,149 @@
             const navItems = document.querySelectorAll('.bottom-nav-item');
             const levelSpan = document.getElementById('levelBadge');
 
-            // ---------- AUTH & PROFIL (identique mais avec gestion d'erreur) ----------
+            // ========== FONCTIONS AUTH & DONNÉES (avec gestion d'erreur visible) ==========
             async function initAuth() {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session?.user) state.user = session.user;
-                else {
-                    const { data, error } = await supabase.auth.signInAnonymously();
-                    if (error) {
-                        console.warn('Auth anonyme échouée, fallback localStorage');
-                        state.user = { id: 'local-' + Math.random().toString(36) };
-                    } else state.user = data.user;
+                try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.user) {
+                        state.user = session.user;
+                        console.log('Utilisateur connecté (session):', state.user.id);
+                    } else {
+                        console.log('Tentative de connexion anonyme...');
+                        const { data, error } = await supabase.auth.signInAnonymously();
+                        if (error) {
+                            console.error('Erreur auth anonyme:', error);
+                            alert('Erreur d\'authentification. Utilisation du mode local (les données ne seront pas sauvegardées en ligne).');
+                            state.user = { id: 'local-' + Math.random().toString(36) };
+                        } else {
+                            state.user = data.user;
+                            console.log('Auth anonyme réussie:', state.user.id);
+                        }
+                    }
+                    await loadProfile();
+                    await loadPerformances();
+                } catch (e) {
+                    console.error('Exception initAuth:', e);
+                    alert('Erreur de connexion à Supabase. Vérifiez votre clé API et votre connexion internet.');
+                    state.user = { id: 'local-' + Math.random().toString(36) };
+                    state.profile = { sex: 'female', age: 28, weight: 62, goal: 'Progresser' };
+                } finally {
+                    renderView(state.currentView);
                 }
-                await loadProfile();
-                await loadPerformances();
-                renderView(state.currentView);
             }
 
             async function loadProfile() {
-                if (!state.user) return;
+                if (!state.user || state.user.id.startsWith('local-')) {
+                    state.profile = { sex: 'female', age: 28, weight: 62, goal: 'Progresser' };
+                    return;
+                }
                 try {
-                    const { data, error } = await supabase.from('profiles').select('*').eq('user_id', state.user.id).single();
-                    if (data) state.profile = data;
-                    else {
-                        const defaultProfile = { user_id: state.user.id, sex: 'female', age: 28, weight: 62, goal: 'Progresser' };
-                        await supabase.from('profiles').insert([defaultProfile]);
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('user_id', state.user.id)
+                        .maybeSingle();
+                    if (error) throw error;
+                    if (data) {
+                        state.profile = data;
+                    } else {
+                        // Créer un profil par défaut
+                        const defaultProfile = {
+                            user_id: state.user.id,
+                            sex: 'female',
+                            age: 28,
+                            weight: 62,
+                            goal: 'Progresser'
+                        };
+                        const { error: insertError } = await supabase
+                            .from('profiles')
+                            .insert([defaultProfile]);
+                        if (insertError) throw insertError;
                         state.profile = defaultProfile;
+                        console.log('Profil créé avec succès');
                     }
                 } catch (e) {
+                    console.error('Erreur loadProfile:', e);
+                    alert('Impossible de charger/créer votre profil. Utilisation de valeurs par défaut.');
                     state.profile = { sex: 'female', age: 28, weight: 62, goal: 'Progresser' };
                 }
             }
 
             async function saveProfile(updated) {
-                if (!state.user) return;
-                const newProfile = { ...state.profile, ...updated, user_id: state.user.id };
-                await supabase.from('profiles').upsert(newProfile, { onConflict: 'user_id' }).catch(()=>{});
-                state.profile = newProfile;
-                renderView(state.currentView);
+                if (!state.user || state.user.id.startsWith('local-')) {
+                    state.profile = { ...state.profile, ...updated };
+                    alert('Profil mis à jour (mode local)');
+                    renderView(state.currentView);
+                    return;
+                }
+                try {
+                    const newProfile = { ...state.profile, ...updated, user_id: state.user.id };
+                    const { error } = await supabase
+                        .from('profiles')
+                        .upsert(newProfile, { onConflict: 'user_id' });
+                    if (error) throw error;
+                    state.profile = newProfile;
+                    alert('Profil mis à jour en ligne ✅');
+                } catch (e) {
+                    console.error('Erreur saveProfile:', e);
+                    alert('Erreur lors de la sauvegarde du profil. Réessayez.');
+                } finally {
+                    renderView(state.currentView);
+                }
             }
 
             async function loadPerformances() {
-                if (!state.user) return;
-                const { data, error } = await supabase.from('performances').select('*').eq('user_id', state.user.id).order('created_at', { ascending: false });
-                if (!error) state.performances = data || [];
-                updateLevelBadge();
+                if (!state.user || state.user.id.startsWith('local-')) {
+                    state.performances = [];
+                    return;
+                }
+                try {
+                    const { data, error } = await supabase
+                        .from('performances')
+                        .select('*')
+                        .eq('user_id', state.user.id)
+                        .order('created_at', { ascending: false });
+                    if (error) throw error;
+                    state.performances = data || [];
+                    console.log('Performances chargées:', state.performances.length);
+                } catch (e) {
+                    console.error('Erreur loadPerformances:', e);
+                    alert('Erreur lors du chargement des performances.');
+                } finally {
+                    updateLevelBadge();
+                }
             }
 
             async function addPerformance(perfData) {
-                if (!state.user) return;
-                const newPerf = { user_id: state.user.id, ...perfData, created_at: new Date().toISOString() };
-                await supabase.from('performances').insert([newPerf]).catch(()=>{});
-                await loadPerformances();
-                return newPerf;
+                if (!state.user || state.user.id.startsWith('local-')) {
+                    alert('Mode local : performance simulée (non enregistrée en ligne)');
+                    const fakePerf = { ...perfData, user_id: state.user.id, created_at: new Date().toISOString() };
+                    state.performances = [fakePerf, ...state.performances];
+                    updateLevelBadge();
+                    return fakePerf;
+                }
+                try {
+                    const newPerf = {
+                        user_id: state.user.id,
+                        exercise: perfData.exercise,
+                        weight: perfData.weight || null,
+                        reps: perfData.reps || null,
+                        time_min: perfData.time_min || null,
+                        distance: perfData.distance || null,
+                        created_at: new Date().toISOString()
+                    };
+                    const { error } = await supabase
+                        .from('performances')
+                        .insert([newPerf]);
+                    if (error) throw error;
+                    console.log('Performance ajoutée avec succès');
+                    await loadPerformances(); // recharger la liste
+                    return newPerf;
+                } catch (e) {
+                    console.error('Erreur addPerformance:', e);
+                    alert('Erreur lors de l\'enregistrement. Vérifiez que la table "performances" existe et que les colonnes correspondent.');
+                    throw e; // pour que le formulaire le sache
+                }
             }
 
             function updateLevelBadge() {
@@ -181,14 +272,13 @@
                 else levelSpan.innerText = 'confirmé';
             }
 
-            // ---------- UTILITAIRE DE COMPARAISON AVANCÉ ----------
+            // ========== COMPARAISON ==========
             function computePerformanceValue(perf) {
                 const exo = perf.exercise;
                 const cat = EXERCISE_CATEGORY[exo] || 'strength';
-                if (cat === 'cardio') return perf.time_min; // temps en minutes
-                if (cat === 'bodyweight') return perf.reps;  // nombre de répétitions
-                // strength : estimé 1RM
-                if (perf.weight && perf.reps) return perf.weight * (1 + perf.reps / 30); // Epley simplifié
+                if (cat === 'cardio') return perf.time_min;
+                if (cat === 'bodyweight') return perf.reps;
+                if (perf.weight && perf.reps) return perf.weight * (1 + perf.reps / 30);
                 return null;
             }
 
@@ -196,26 +286,20 @@
                 const avg = NATIONAL_AVERAGES[exercise]?.[sex];
                 if (!avg) return "Pas de référence nationale pour cet exercice.";
                 const cat = EXERCISE_CATEGORY[exercise];
-                let diffPercent = 0;
-                let better = false;
                 if (cat === 'cardio') {
-                    // plus petit = meilleur
-                    better = perfValue < avg;
-                    diffPercent = Math.abs((perfValue - avg) / avg * 100).toFixed(1);
-                    if (perfValue < avg) return `🚀 ${perfValue} min (${diffPercent}% plus rapide que la moyenne ${sex==='male'?'H':'F'} ${avg} min)`;
-                    if (perfValue > avg) return `⏱️ ${perfValue} min (${diffPercent}% plus lent que la moyenne ${avg} min)`;
+                    const diff = ((avg - perfValue) / avg * 100).toFixed(1);
+                    if (perfValue < avg) return `🚀 ${perfValue} min (${diff}% plus rapide que la moyenne ${sex==='male'?'H':'F'} ${avg} min)`;
+                    if (perfValue > avg) return `⏱️ ${perfValue} min (${Math.abs(diff)}% plus lent)`;
                     return `Égal à la moyenne (${avg} min)`;
                 } else {
-                    // force ou bodyweight : plus grand = meilleur
-                    better = perfValue > avg;
-                    diffPercent = Math.abs((perfValue - avg) / avg * 100).toFixed(1);
-                    if (perfValue > avg) return `🏆 ${perfValue} (${diffPercent}% > moyenne ${sex==='male'?'H':'F'} ${avg})`;
-                    if (perfValue < avg) return `📈 ${perfValue} (${diffPercent}% < moyenne ${avg})`;
+                    const diff = ((perfValue - avg) / avg * 100).toFixed(1);
+                    if (perfValue > avg) return `🏆 ${perfValue} (+${diff}% > moyenne ${sex==='male'?'H':'F'} ${avg})`;
+                    if (perfValue < avg) return `📈 ${perfValue} (${Math.abs(diff)}% < moyenne ${avg})`;
                     return `✅ Égal à la moyenne (${avg})`;
                 }
             }
 
-            // ---------- RENDU DES VUES ----------
+            // ========== RENDU DES VUES ==========
             function renderDashboard() {
                 const lastPerf = state.performances[0];
                 const sex = state.profile?.sex || 'female';
@@ -277,7 +361,6 @@
 
             function renderAdd() {
                 const sex = state.profile?.sex || 'female';
-                // Générer les options du select avec groupes
                 let optionsHtml = '';
                 const categories = {
                     strength: 'Force (kg)',
@@ -303,12 +386,9 @@
                                 ${optionsHtml}
                             </select>
                         </div>
-
                         <div id="dynamicFields"></div>
-
                         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl shadow-md transition">Enregistrer la performance</button>
                     </form>
-
                     <div id="feedbackMessage" class="mt-5 p-3 rounded-xl text-sm hidden"></div>
                 `;
 
@@ -321,9 +401,15 @@
                     const exo = exoSelect.value;
                     const cat = EXERCISE_CATEGORY[exo];
                     if (cat === 'cardio') {
+                        let distanceValue = 5;
+                        if (exo === 'run_10k') distanceValue = 10;
+                        else if (exo === 'half_marathon') distanceValue = 21.1;
+                        else if (exo === 'bike_20k') distanceValue = 20;
+                        else if (exo === 'swim_1k') distanceValue = 1;
+                        else if (exo === 'row_2k') distanceValue = 2;
                         dynDiv.innerHTML = `
                             <div><label class="block text-sm font-medium text-gray-700 mb-1">Temps (minutes)</label><input type="number" step="0.1" id="timeMin" class="w-full p-3 border rounded-xl" placeholder="ex: 25.5" required></div>
-                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Distance (km) <span class="text-xs text-gray-400">(fixe selon l'exercice)</span></label><input type="number" step="0.1" id="distance" class="w-full p-3 border rounded-xl bg-gray-100" value="${exo.includes('5k')?5:exo.includes('10k')?10:exo.includes('half')?21.1:exo.includes('20k')?20:exo.includes('1k')?1:exo.includes('2k')?2:5}" readonly></div>
+                            <div><label class="block text-sm font-medium text-gray-700 mb-1">Distance (km)</label><input type="number" step="0.1" id="distance" class="w-full p-3 border rounded-xl bg-gray-100" value="${distanceValue}" readonly></div>
                         `;
                     } else if (cat === 'bodyweight') {
                         dynDiv.innerHTML = `
@@ -350,7 +436,9 @@
                     if (cat === 'cardio') {
                         const time = parseFloat(document.getElementById('timeMin')?.value);
                         if (!time || time <= 0) { alert('Temps invalide'); return; }
+                        const distance = parseFloat(document.getElementById('distance')?.value);
                         perfData.time_min = time;
+                        perfData.distance = distance;
                         compareValue = time;
                     } else if (cat === 'bodyweight') {
                         const reps = parseInt(document.getElementById('reps')?.value);
@@ -363,22 +451,36 @@
                         if (!weight || weight <=0 || !reps || reps<=0) { alert('Poids ou répétitions invalides'); return; }
                         perfData.weight = weight;
                         perfData.reps = reps;
-                        compareValue = weight * (1 + reps/30); // 1RM estimé
+                        compareValue = weight * (1 + reps/30);
                     }
 
                     const sexe = state.profile?.sex || 'female';
                     const msg = getComparisonMessage(exo, compareValue, sexe);
+
+                    // Afficher le feedback immédiat
                     feedback.className = `mt-5 p-3 rounded-xl text-sm ${(cat==='cardio' ? compareValue <= (NATIONAL_AVERAGES[exo]?.[sexe]||Infinity) : compareValue >= (NATIONAL_AVERAGES[exo]?.[sexe]||0)) ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`;
                     feedback.innerHTML = `<i class="fas fa-chart-simple mr-1"></i>${msg}`;
                     feedback.classList.remove('hidden');
 
-                    await addPerformance(perfData);
-                    updateLevelBadge();
+                    // Enregistrement effectif
+                    try {
+                        await addPerformance(perfData);
+                        // Petit message supplémentaire de confirmation
+                        const savedMsg = document.createElement('div');
+                        savedMsg.className = 'mt-2 text-xs text-green-600';
+                        savedMsg.innerHTML = '✅ Enregistré sur Supabase !';
+                        feedback.appendChild(savedMsg);
+                        setTimeout(() => savedMsg.remove(), 3000);
+                    } catch (err) {
+                        const errorMsg = document.createElement('div');
+                        errorMsg.className = 'mt-2 text-xs text-red-600';
+                        errorMsg.innerHTML = '❌ Erreur d\'enregistrement (voir console)';
+                        feedback.appendChild(errorMsg);
+                    }
                 });
             }
 
             function renderProgress() {
-                // Graphique pour un exercice populaire (squat) et affichage des dernières perfs tous exos
                 const squatPerfs = state.performances.filter(p => p.exercise === 'squat').reverse();
                 const labels = squatPerfs.map((_, i) => `S${i+1}`);
                 const data = squatPerfs.map(p => p.weight ? p.weight * (1 + (p.reps||5)/30) : 0);
@@ -462,10 +564,16 @@
                 else if (view === 'profile') renderProfile();
             }
 
+            // Navigation
             navItems.forEach(item => item.addEventListener('click', () => renderView(item.dataset.view)));
+
+            // Démarrer l'application
             await initAuth();
         })();
     </script>
-    <!-- Note : les tables Supabase doivent exister : profiles (user_id, sex, age, weight, goal) et performances (user_id, exercise, weight, reps, time_min, distance, created_at) -->
+    <!-- Vérifiez que les tables "profiles" et "performances" existent avec les bonnes colonnes :
+         - profiles : user_id (uuid), sex (text), age (int), weight (numeric), goal (text)
+         - performances : user_id (uuid), exercise (text), weight (numeric), reps (int), time_min (numeric), distance (numeric), created_at (timestamptz)
+    -->
 </body>
 </html>
