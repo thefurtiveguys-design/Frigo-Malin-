@@ -78,7 +78,7 @@ const foodTranslations = {
     'noodle': '🍜 Nouilles',
     'pizza': '🍕 Pizza',
     
-    // ---- CONTENANTS (Souvent détectés dans un frigo) ----
+    // ---- CONTENANTS & EMBALLAGES (Souvent détectés dans un frigo/placard) ----
     'can': '🥫 Conserve',
     'bottle': '🧴 Bouteille',
     'water bottle': '💧 Bouteille d\'eau',
@@ -93,6 +93,10 @@ const foodTranslations = {
     'cup': '☕ Tasse',
     'coffee mug': '☕ Tasse',
     'bowl': '🥣 Bol',
+    'carton': '📦 Boîte/Paquet',     // TRÈS IMPORTANT: Les paquets de pâtes, briques de lait...
+    'packet': '📦 Boîte/Paquet',
+    'box': '📦 Boîte/Paquet',
+    'plastic bag': '🛍️ Sachet',
     
     // ---- PRODUITS LAITIERS ----
     'milk': '🥛 Lait',
