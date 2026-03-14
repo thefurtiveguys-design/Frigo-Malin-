@@ -29,6 +29,14 @@ async function startCamera() {
         videoElement.srcObject = stream;
         cameraContainer.classList.remove('hidden');
         startCameraBtn.classList.add('hidden');
+        
+        // Lancer la détection temps réel une fois la vidéo chargée
+        videoElement.onloadeddata = () => {
+            if (window.startRealTimeDetection) {
+                window.startRealTimeDetection(videoElement);
+            }
+        };
+        
     } catch (err) {
         console.error("Erreur d'accès à la caméra: ", err);
         alert("Impossible d'accéder à la caméra. Veuillez autoriser l'accès ou utiliser le bouton d'importation de photo.");
@@ -36,6 +44,10 @@ async function startCamera() {
 }
 
 function stopCamera() {
+    if (window.stopRealTimeDetection) {
+        window.stopRealTimeDetection();
+    }
+    
     if (stream) {
         stream.getTracks().forEach(track => track.stop());
         stream = null;
@@ -88,4 +100,3 @@ function handleImageUpload(e) {
     };
     reader.readAsDataURL(file);
 }
-
